@@ -16,6 +16,10 @@ module DPL
         AWS.config(access_key_id: option(:access_key_id), secret_access_key: option(:secret_access_key), region: region)
       end
 
+      def upload_only?
+        options[:upload_only]
+      end
+
       def check_app
       end
 
@@ -31,7 +35,7 @@ module DPL
         s3_object = upload(archive_name, zip_file)
         sleep 5 #s3 eventual consistency
         version = create_app_version(s3_object)
-        update_app(version)
+        update_app(version) unless upload_only?
       end
 
       private
