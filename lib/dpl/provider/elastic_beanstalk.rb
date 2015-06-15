@@ -3,7 +3,7 @@ module DPL
     class ElasticBeanstalk < Provider
       experimental 'AWS Elastic Beanstalk'
 
-      requires 'aws-sdk-v1'
+      requires 'aws-sdk'
       requires 'rubyzip', :load => 'zip'
 
       DEFAULT_REGION = 'us-east-1'
@@ -21,7 +21,11 @@ module DPL
       end
 
       def check_auth
-        AWS.config(access_key_id: access_key_id, secret_access_key: secret_access_key, region: region)
+        options = {
+          :region      => region,
+          :credentials => Aws::Credentials.new(access_key_id, secret_access_key)
+        }
+        Aws.config.update(options);
       end
 
       def upload_only?
@@ -81,11 +85,11 @@ module DPL
       end
 
       def s3
-        @s3 ||= AWS::S3.new
+        @s3 ||= Aws::S3::Resource.new
       end
 
       def eb
-        @eb ||= AWS::ElasticBeanstalk.new.client
+        @eb ||= Aws::ElasticBeanstalk::Client.new
       end
 
       def bucket_exists?
@@ -114,9 +118,12 @@ module DPL
       end
 
       def upload(key, file)
-        obj = s3.buckets[bucket_name]
-        obj = bucket_path ? obj.objects["#{bucket_path}#{key}"] : obj.objects[key]
-        obj.write(Pathname.new(file))
+        options = {
+          :body => Pathname.new(file).open
+        }
+        bucket = s3.bucket(bucket_name)
+        obj = bucket_path ? bucket.object("#{bucket_path}#{key}") : bucket.object(key)
+        obj.put(options)
         obj
       end
 
