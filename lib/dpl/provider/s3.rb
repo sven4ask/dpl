@@ -48,7 +48,7 @@ module DPL
       end
 
       def upload_path(filename)
-        [upload_dir, filename].compact.join("/")
+        [upload_dir, filename].compact.join("/").gsub(/^\/+|(?<=\/)\/+|\/+$/, '')
       end
 
       def push_app
