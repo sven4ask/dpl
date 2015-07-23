@@ -10,6 +10,7 @@ group :heroku do
   gem 'rendezvous', '~> 0.0.2'
   gem 'heroku-api', '= 0.3.16'
   gem 'anvil-cli', '~> 0.16.1'
+  gem 'netrc'
 end
 
 group :openshift do
@@ -45,10 +46,6 @@ end
 
 group :releases do
   gem 'octokit'
-end
-
-group :ninefold do
-  gem 'ninefold'
 end
 
 group :gcs do

@@ -1,11 +1,11 @@
-# Dpl [![Build Status](https://travis-ci.org/travis-ci/dpl.svg?branch=master)](https://travis-ci.org/travis-ci/dpl) [![Code Climate](https://codeclimate.com/github/travis-ci/dpl.png)](https://codeclimate.com/github/travis-ci/dpl) [![Gem Version](https://badge.fury.io/rb/dpl.png)](http://badge.fury.io/rb/dpl)
- Dpl (dee-pee-ell) is a deploy tool made for continuous deployment.  Developed and used by Travis CI.
+# Dpl [![Build Status](https://travis-ci.org/travis-ci/dpl.svg?branch=master)](https://travis-ci.org/travis-ci/dpl) [![Code Climate](https://codeclimate.com/github/travis-ci/dpl.png)](https://codeclimate.com/github/travis-ci/dpl) [![Gem Version](https://badge.fury.io/rb/dpl.png)](http://badge.fury.io/rb/dpl) [![Coverage Status](https://coveralls.io/repos/travis-ci/dpl/badge.svg?branch=master&service=github)](https://coveralls.io/github/travis-ci/dpl?branch=master)
 
 ## Supported Providers:
 Dpl supports the following providers:
 
 * [AppFog](#appfog)
 * [Biicode](#biicode)
+* [Bintray](#bintray)
 * [BitBalloon](#bitballoon)
 * [Cloud 66](#cloud-66)
 * [Cloud Foundry](#cloud-foundry)
@@ -24,7 +24,6 @@ Dpl supports the following providers:
 * [AWS OpsWorks](#opsworks)
 * [Modulus](#modulus)
 * [Github Releases](#github-releases)
-* [Ninefold](#ninefold)
 * [Hackage](#hackage)
 * [Deis](#deis)
 * [Google Cloud Storage](#google-cloud-storage)
@@ -35,7 +34,8 @@ Dpl supports the following providers:
 * [Lambda](#lambda)
 * [TestFairy](#testfairy)
 * [ExoScale](#exoscale)
-* [AWS CodeDeploy](#codedeploy)
+* [AWS CodeDeploy](#aws-codedeploy)
+* [Script](#script)
 
 ## Installation:
 
@@ -76,7 +76,98 @@ As a rule of thumb, you should switch to the Git strategy if you run into issues
     dpl --provider=heroku --strategy=git --username=<username> --password=<password>  --app=<application>
 
 
+### Bintray:
 
+#### Options:
+
+* **file**: Path to a descriptor file, containing information for the Bintray upload.
+* **user**: Bintray user
+* **key**: Bintray API key
+* **passphrase**: Optional. In case a passphrase is configured on Bintray and GPG signing is used.
+* **dry-run**: Optional. If set to true, skips sending requests to Bintray. Useful for testing your configuration.
+
+#### Descriptor file example:
+```groovy
+{
+	/* Bintray package information.
+	   In case the package already exists on Bintray, only the name, repo and subject
+	   fields are mandatory. */
+
+	"package": {
+		"name": "auto-upload", // Bintray package name
+		"repo": "myRepo", // Bintray repository name
+		"subject": "myBintrayUser", // Bintray subject (user or organization)
+		"desc": "I was pushed completely automatically",
+		"website_url": "www.jfrog.com",
+ 		"issue_tracker_url": "https://github.com/bintray/bintray-client-java/issues",
+ 		"vcs_url": "https://github.com/bintray/bintray-client-java.git",
+		"github_use_tag_release_notes": true,
+		"github_release_notes_file": "RELEASE.txt",
+ 		"licenses": ["MIT"],
+ 		"labels": ["cool", "awesome", "gorilla"],
+ 		"public_download_numbers": false,
+ 		"public_stats": false,
+ 		"attributes": [{"name": "att1", "values" : ["val1"], "type": "string"},
+     				   {"name": "att2", "values" : [1, 2.2, 4], "type": "number"},
+     				   {"name": "att5", "values" : ["2014-12-28T19:43:37+0100"], "type": "date"}]
+ 	},
+
+	/* Package version information.
+	   In case the version already exists on Bintray, only the name fields is mandatory. */
+
+	"version": {
+		"name": "0.5",
+		"desc": "This is a version",
+		"released": "2015-01-04",
+		"vcs_tag": "0.5",
+	 	"attributes": [{"name": "VerAtt1", "values" : ["VerVal1"], "type": "string"},
+  					   {"name": "VerAtt2", "values" : [1, 3.3, 5], "type": "number"},
+					   {"name": "VerAtt3", "values" : ["2015-01-01T19:43:37+0100"], "type": "date"}],
+		"gpgSign": false
+	},
+
+	/* Configure the files you would like to upload to Bintray and their upload path.
+	You can define one or more groups of patterns.
+	Each group contains three patterns:
+
+	includePattern: Pattern in the form of Ruby regular expression, indicating the path of files to be uploaded to Bintray.
+	excludePattern: Optional. Pattern in the form of Ruby regular expression, indicating the path of files to be removed from the list of files specified by the includePattern.
+	uploadPattern: Upload path on Bintray. The path can contain symbols in the form of $1, $2,... that are replaced with capturing groups defined in the include pattern.
+
+	In the example below, the following files are uploaded,
+	1. All gem files located under build/bin/ (including sub directories),
+	except for files under a the do-not-deploy directory.
+	The files will be uploaded to Bintray under the gems folder.
+	2. All files under build/docs. The files will be uploaded to Bintray under the docs folder.
+
+	Note: Regular expressions defined as part of the includePattern and excludePattern properties must be wrapped with brackets. */
+
+	"files":
+		[
+		{"includePattern": "build/bin(.*)*/(.*\.gem)", "excludePattern": ".*/do-not-deploy/.*", "uploadPattern": "gems/$2"},
+		{"includePattern": "build/docs/(.*)", "uploadPattern": "docs/$1"}
+		],
+	"publish": true
+}
+```
+
+#### Debian Upload
+
+When artifacts are uploaded to a Debian repository using the Automatic index layout, the Debian distribution information is required and must be specified. The information is specified in the descriptor file by the matrixParams as part of the files closure as shown in the following example:
+```groovy
+    "files":
+        [{"includePattern": "build/bin/(.*\.deb)", "uploadPattern": "$1",
+		"matrixParams": {
+			"deb_distribution": "vivid",
+			"deb_component": "main",
+			"deb_architecture": "amd64"}
+		}
+	]
+```
+
+#### Examples:
+    dpl --provider=bintray --file=<path> --user=<username> --key=<api-key>
+    dpl --provider=bintray --file=<path> --user=<username> --key=<api-key> --passphrase=<passphrase>
 
 ### Nodejitsu:
 
@@ -240,6 +331,7 @@ It is possible to set file-specific `Cache-Control` and `Expires` headers using 
 * **app-id**: The app ID.
 * **migrate**: Migrate the database. (Default: false)
 * **wait-until-deployed**: Wait until the app is deployed and return the deployment status. (Default: false)
+* **custom_json**: Override custom_json options. If using this, default configuration will be overriden. See the code [here](https://github.com/travis-ci/dpl/blob/master/lib/dpl/provider/ops_works.rb#L34). More about `custom_json` [here](http://docs.aws.amazon.com/opsworks/latest/userguide/workingcookbook-json.html).
 
 #### Environment variables:
 
@@ -346,17 +438,6 @@ For accounts using two factor authentication, you have to use an oauth token as 
 #### Examples:
 
     dpl --provider=cloud66 --redeployment_hook=<url>
-
-### Ninefold
-
-#### Options:
-
-* **auth_token**: Ninefold deploy auth token
-* **app_id**: Ninefold deploy app ID
-
-#### Examples:
-
-    dpl --provider=ninefold --auth_token=<auth_token> --app_id=<app_id>
 
 ### Hackage:
 
@@ -582,3 +663,17 @@ and your testers can start testing your app.
 #### Examples:
 
     dpl --provider=codedeploy --access-key-id=<aws access key> --secret_access_key=<aws secret access key> --application=<application name> --deployment_group=<deployment group> --revision_type=<s3/github> --commit_id=<commit ID> --repository=<repo name> --region=<AWS availability zone> --wait-until-deployed=<true>
+
+### Script:
+
+An elementary provider that executes a single command.
+
+Deployment will be marked a failure if the script exits with nonzero status.
+
+#### Option:
+
+* **script**: script to execute.
+
+#### Example:
+
+    dpl --provider=script --script=./script/deploy.sh
