@@ -31,22 +31,28 @@ module DPL
       def upload_only?
         options[:upload_only]
       end
+      
+      def deploy_only?
+        options[:deploy_only]
+      end
 
       def check_app
       end
 
       def push_app
-        create_bucket unless bucket_exists?
+        unless options[:deploy_only]
+          create_bucket unless bucket_exists?
 
-        if options[:zip_file]
-          zip_file = File.join(Dir.pwd, options[:zip_file])
-        else
-          zip_file = create_zip
+          if options[:zip_file]
+            zip_file = File.join(Dir.pwd, options[:zip_file])
+          else
+            zip_file = create_zip
+          end
+
+          s3_object = upload(archive_name, zip_file)
+          sleep 5 #s3 eventual consistency
+          version = create_app_version(s3_object)
         end
-
-        s3_object = upload(archive_name, zip_file)
-        sleep 5 #s3 eventual consistency
-        version = create_app_version(s3_object)
         update_app(version) unless upload_only?
       end
 
